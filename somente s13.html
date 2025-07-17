@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro de Territórios S-13</title>
+    <!-- Incluindo o Tailwind CSS para um design moderno e responsivo -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Incluindo a biblioteca SheetJS (xlsx) para exportar para Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Estilo para garantir que a fonte Inter seja aplicada */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Estilo para os placeholders dos inputs de data */
+        input[type="date"]:before {
+            content: attr(placeholder) !important;
+            color: #9ca3af; /* Cor do placeholder do Tailwind (gray-400) */
+            margin-right: 0.5em;
+        }
+        input[type="date"]:focus:before,
+        input[type="date"]:valid:before {
+            content: "";
+        }
+        /* Estilos para a tabela se assemelhar à imagem */
+        .table-bordered th, .table-bordered td {
+            border: 1px solid #000; /* Bordas pretas */
+            padding: 4px 8px; /* Padding menor */
+            text-align: center;
+            vertical-align: middle;
+            height: 30px; /* Altura fixa para as células */
+        }
+        .table-bordered thead th {
+            background-color: #e5e7eb; /* Fundo cinza claro para o cabeçalho */
+            font-weight: bold;
+        }
+        .delete-btn {
+            background: none;
+            border: none;
+            color: red;
+            cursor: pointer;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        /* Estilo para a célula do nome */
+        .name-cell {
+            font-weight: 500;
+        }
+        /* Cor de fundo para linhas ímpares (branca) */
+        .row-odd td {
+            background-color: #ffffff;
+        }
+        /* Cor de fundo para linhas pares (agora cinza, igual à primeira coluna) */
+        .row-even td {
+            background-color: #e5e7eb; /* Tailwind's gray-200 */
+        }
+        /* A primeira coluna (Terr. n.º) deve manter seu fundo cinza sempre. */
+        .table-bordered tbody tr td[rowspan="2"] {
+            background-color: #e5e7eb;
+            font-weight: bold;
+        }
+        /* Estilos para botões de paginação desabilitados */
+        .pagination-btn:disabled {
+            background-color: #d1d5db;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8 max-w-7xl">
+        
+        <!-- Cabeçalho da Página -->
+        <header class="text-center mb-4">
+            <h1 class="text-3xl sm:text-4xl font-bold text-gray-700">Registro de Territórios S-13</h1>
+        </header>
+
+        <!-- Botões de Ação -->
+        <div class="text-center mb-8 flex flex-wrap justify-center gap-4">
+             <button id="open-add-record-modal-btn" class="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition duration-150 ease-in-out">
+                Adicionar Novo Registro
+            </button>
+            <button id="open-names-modal-btn" class="bg-gray-500 text-white font-semibold py-2 px-4 rounded-md hover:bg-gray-600 transition duration-150 ease-in-out">
+                Gerenciar Nomes
+            </button>
+             <button id="reset-data-btn" class="bg-red-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-red-700 transition duration-150 ease-in-out">
+                Resetar Dados
+            </button>
+        </div>
+
+        <!-- Controles de Paginação -->
+        <div id="pagination-controls" class="flex justify-center items-center gap-4 my-4">
+            <button id="prev-page-btn" class="pagination-btn bg-indigo-500 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-600 transition duration-150 ease-in-out">Anterior</button>
+            <span id="page-indicator" class="font-semibold text-gray-700">Página 1 de 1</span>
+            <button id="next-page-btn" class="pagination-btn bg-indigo-500 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-600 transition duration-150 ease-in-out">Próximo</button>
+        </div>
+
+        <!-- Tabela de Registros -->
+        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+             <div class="text-center py-2">
+                <h2 class="text-xl font-bold">Ano de Serviço: 2025</h2>
+            </div>
+            <div class="overflow-x-auto p-4">
+                <table id="planilha" class="w-full table-bordered text-sm">
+                    <thead>
+                        <tr>
+                            <th rowspan="2" class="w-16">Terr. n.º</th>
+                            <th rowspan="2" class="w-24">Última data concluída</th>
+                            <th colspan="2">Designado para</th>
+                            <th colspan="2">Designado para</th>
+                            <th colspan="2">Designado para</th>
+                            <th colspan="2">Designado para</th>
+                        </tr>
+                        <tr>
+                            <th>Data da desig.</th><th>Data da conclusão</th>
+                            <th>Data da desig.</th><th>Data da conclusão</th>
+                            <th>Data da desig.</th><th>Data da conclusão</th>
+                            <th>Data da desig.</th><th>Data da conclusão</th>
+                        </tr>
+                    </thead>
+                    <tbody id="planilha-corpo">
+                        <!-- As 46 linhas serão geradas aqui via JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Botão para Baixar a Planilha -->
+        <div class="mt-8 text-center">
+            <button id="baixar-excel" class="bg-green-600 text-white font-semibold py-2 px-6 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition duration-150 ease-in-out">
+                Baixar Planilha (Excel)
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal para Adicionar Registro -->
+    <div id="add-record-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex justify-center items-center p-4 z-50">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-4xl relative">
+            <button id="close-add-record-modal-btn" class="absolute top-3 right-3 text-gray-500 hover:text-gray-800 text-2xl font-bold">&times;</button>
+            <h2 class="text-xl font-semibold mb-4 text-gray-800">Adicionar Novo Registro</h2>
+            <form id="registro-form" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- Campo: Número do Território -->
+                <div>
+                    <label for="territorio-numero" class="block text-sm font-medium text-gray-700 mb-1">Número do Território</label>
+                    <input type="number" id="territorio-numero" placeholder="1-46" min="1" max="46" required class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <!-- Campo: Nome (agora um select) -->
+                <div>
+                    <label for="nome-select" class="block text-sm font-medium text-gray-700 mb-1">Designado para (Nome)</label>
+                    <select id="nome-select" required class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white">
+                        <option value="">Selecione um nome</option>
+                        <!-- Nomes serão adicionados aqui via JS -->
+                    </select>
+                </div>
+                <!-- Campo: Data de Início -->
+                <div>
+                    <label for="data-inicio" class="block text-sm font-medium text-gray-700 mb-1">Data da Designação</label>
+                    <input type="date" id="data-inicio" placeholder="Selecione a data" required class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <!-- Campo: Data de Conclusão -->
+                <div>
+                    <label for="data-conclusao" class="block text-sm font-medium text-gray-700 mb-1">Data da Conclusão</label>
+                    <input type="date" id="data-conclusao" placeholder="Selecione a data" required class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <!-- Botão de Adicionar -->
+                <div class="md:col-span-2 lg:col-span-4">
+                    <button type="submit" class="w-full bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out mt-2">
+                        Adicionar à Planilha
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal para Gerenciar Nomes -->
+    <div id="names-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex justify-center items-center p-4 z-50">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md relative">
+            <button id="close-names-modal-btn" class="absolute top-3 right-3 text-gray-500 hover:text-gray-800 text-2xl font-bold">&times;</button>
+            <h2 class="text-xl font-semibold mb-4 text-gray-800">Gerenciar Publicadores</h2>
+            <form id="add-name-form" class="flex items-end gap-4 mb-4">
+                <div class="flex-grow">
+                    <label for="novo-nome-input" class="block text-sm font-medium text-gray-700 mb-1">Nome do Publicador</label>
+                    <input type="text" id="novo-nome-input" placeholder="Digite um novo nome para cadastrar" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <button type="submit" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-700 transition duration-150 ease-in-out">Cadastrar</button>
+            </form>
+            <h3 class="text-lg font-medium text-gray-700 mb-2">Nomes Cadastrados:</h3>
+            <div class="max-h-60 overflow-y-auto border p-2 rounded-md">
+                <ul id="lista-publicadores" class="list-disc list-inside space-y-1">
+                    <!-- Lista de nomes cadastrados -->
+                </ul>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // --- DADOS INICIAIS (USADOS APENAS SE NÃO HOUVER DADOS SALVOS) ---
+            const dadosIniciaisDoPDF = [
+                { date: "03/02/2025", name: "Mateus Felipe", territory: "25" }, { date: "03/02/2025", name: "Mateus Felipe", territory: "26" },
+                { date: "03/02/2025", name: "Ivo Jason", territory: "27" }, { date: "03/02/2025", name: "Silvino Amorim", territory: "28" },
+                { date: "04/02/2025", name: "Wesley Rodrigues", territory: "29" }, { date: "04/02/2025", name: "Wesley Rodrigues", territory: "30" },
+                { date: "04/02/2025", name: "Aurelio Lins", territory: "31" }, { date: "04/02/2025", name: "Jonatas Donoso", territory: "32" },
+                { date: "04/02/2025", name: "Irineu Armelin", territory: "33" }, { date: "04/02/2025", name: "Irineu Armelin", territory: "34" },
+                { date: "04/02/2025", name: "Francisco Godoy", territory: "35" }, { date: "04/02/2025", name: "Francisco Godoy", territory: "36" },
+                { date: "09/02/2025", name: "Silvino Amorim", territory: "35" }, { date: "09/02/2025", name: "Alvaro", territory: "37" },
+                { date: "09/02/2025", name: "Aurelio Lins", territory: "38" }, { date: "09/02/2025", name: "Jonatas Donoso", territory: "39" },
+                { date: "09/02/2025", name: "Ivo Jason", territory: "40" }, { date: "09/02/2025", name: "Ivo Jason", territory: "41" },
+                { date: "09/02/2025", name: "Eric Gregorio", territory: "42" }, { date: "09/02/2025", name: "Eric Gregorio", territory: "43" },
+                { date: "11/02/2025", name: "Getulio Rodrigues", territory: "2" }, { date: "11/02/2025", name: "Silvino Amorim", territory: "3" },
+                { date: "11/02/2025", name: "Ivo Jason", territory: "4" }, { date: "11/02/2025", name: "Ivo Jason", territory: "5" },
+                { date: "11/02/2025", name: "Márcio Arruda", territory: "6" }, { date: "11/02/2025", name: "Francisco Godoy", territory: "7" },
+                { date: "11/02/2025", name: "Silvino Amorim", territory: "8" }, { date: "11/02/2025", name: "Silvino Amorim", territory: "9" },
+                { date: "11/02/2025", name: "Silvino Amorim", territory: "10" }, { date: "11/02/2025", name: "Silvino Amorim", territory: "11" },
+                { date: "16/02/2025", name: "Silvino Amorim", territory: "1" }, { date: "16/02/2025", name: "Getulio Rodrigues", territory: "14" },
+                { date: "16/02/2025", name: "Getulio Rodrigues", territory: "15" }, { date: "16/02/2025", name: "Getulio Rodrigues", territory: "16" },
+                { date: "16/02/2025", name: "Mateus Felipe", territory: "37" }, { date: "16/02/2025", name: "Getulio Rodrigues", territory: "44" },
+                { date: "16/02/2025", name: "Getulio Rodrigues", territory: "45" }, { date: "16/02/2025", name: "Getulio Rodrigues", territory: "46" },
+                { date: "18/02/2025", name: "Irineu Armelin", territory: "12" }, { date: "18/02/2025", name: "Irineu Armelin", territory: "13" },
+                { date: "18/02/2025", name: "Ivo Jason", territory: "17" }, { date: "18/02/2025", name: "Ivo Jason", territory: "18" },
+                { date: "18/02/2025", name: "Francisco Godoy", territory: "19" }, { date: "18/02/2025", name: "Francisco Godoy", territory: "20" },
+                { date: "23/02/2025", name: "Francisco Godoy", territory: "18" }, { date: "23/02/2025", name: "Francisco Godoy", territory: "19" },
+                { date: "23/02/2025", name: "Márcio Arruda", territory: "21" }, { date: "23/02/2025", name: "Márcio Arruda", territory: "22" },
+                { date: "23/02/2025", name: "Francisco Godoy", territory: "23" }, { date: "23/02/2025", name: "Francisco Godoy", territory: "24" },
+                { date: "23/02/2025", name: "Francisco Godoy", territory: "25" }, { date: "23/02/2025", name: "Francisco Godoy", territory: "26" },
+                { date: "23/02/2025", name: "Francisco Godoy", territory: "27" }, { date: "23/02/2025", name: "Francisco Godoy", territory: "28" },
+                { date: "23/02/2025", name: "Francisco Godoy", territory: "29" }, { date: "23/02/2025", name: "Francisco Godoy", territory: "30" },
+                { date: "25/02/2025", name: "Silvino Amorim", territory: "23" }, { date: "25/02/2025", name: "Silvino Amorim", territory: "24" },
+                { date: "25/02/2025", name: "Ivo Jason", territory: "35" }, { date: "25/02/2025", name: "Ivo Jason", territory: "36" },
+                { date: "25/02/2025", name: "Francisco Godoy", territory: "37" }, { date: "25/02/2025", name: "Francisco Godoy", territory: "38" },
+                { date: "01/03/2025", name: "Francisco Godoy", territory: "40" }, { date: "03/03/2024", name: "Irineu Armelin", territory: "5" },
+                { date: "03/03/2024", name: "Irineu Armelin", territory: "9" }, { date: "03/03/2025", name: "Irineu Armelin", territory: "10" },
+                { date: "03/03/2025", name: "Ivo Jason", territory: "11" }, { date: "03/03/2025", name: "Ivo Jason", territory: "12" },
+                { date: "03/03/2025", name: "Ivo Jason", territory: "13" }, { date: "03/03/2025", name: "Emílio Souza", territory: "17" },
+                { date: "03/03/2025", name: "Emílio Souza", territory: "18" }, { date: "03/03/2025", name: "Emílio Souza", territory: "19" },
+                { date: "03/03/2025", name: "Silvino Amorim", territory: "39" }, { date: "08/03/2025", name: "Wagner", territory: "20" },
+                { date: "08/03/2025", name: "Márcio Arruda", territory: "21" }, { date: "08/03/2025", name: "Márcio Arruda", territory: "22" },
+                { date: "10/03/2025", name: "Silvino Amorim", territory: "22" }, { date: "10/03/2025", name: "Aurelio Lins", territory: "24" },
+                { date: "10/03/2025", name: "Ivo Jason", territory: "28" }, { date: "10/03/2025", name: "Wesley Rodrigues", territory: "29" },
+                { date: "10/03/2025", name: "Wesley Rodrigues", territory: "30" }, { date: "10/03/2025", name: "Wesley Rodrigues", territory: "31" },
+                { date: "10/03/2025", name: "William Lindem", territory: "32" }, { date: "10/03/2025", name: "William Lindem", territory: "33" },
+                { date: "10/03/2025", name: "Ivo Jason", territory: "34" }, { date: "10/03/2025", name: "Ivo Jason", territory: "35" },
+                { date: "10/03/2025", name: "Wagner", territory: "36" }, { date: "11/03/2025", name: "Ivo Jason", territory: "23" },
+                { date: "11/03/2025", name: "Irineu Armelin", territory: "25" }, { date: "11/03/2025", name: "Irineu Armelin", territory: "26" },
+                { date: "12/03/2025", name: "Ivo Jason", territory: "27" }, { date: "14/03/2025", name: "Matheus Mikó", territory: "29" },
+                { date: "14/03/2025", name: "Matheus Mikó", territory: "30" }, { date: "14/03/2025", name: "Matheus Mikó", territory: "31" },
+                { date: "22/03/2025", name: "Márcio Arruda", territory: "18" }, { date: "22/03/2025", name: "Vinicius W", territory: "19" },
+                { date: "22/03/2025", name: "Leonardo Dutra", territory: "20" }, { date: "22/03/2025", name: "Irineu Armelin", territory: "21" },
+                { date: "22/03/2025", name: "Silvino Amorim", territory: "22" }, { date: "22/03/2025", name: "Silvino Amorim", territory: "23" },
+                { date: "22/03/2025", name: "Márcio Arruda", territory: "24" }, { date: "23/03/2025", name: "Silvino Amorim", territory: "21" },
+                { date: "23/03/2025", name: "Silvino Amorim", territory: "22" }, { date: "23/03/2025", name: "Getulio Rodrigues", territory: "26" },
+                { date: "23/03/2025", name: "Getulio Rodrigues", territory: "27" }, { date: "23/03/2025", name: "Francisco Godoy", territory: "28" },
+                { date: "23/03/2025", name: "Vitor", territory: "29" }, { date: "23/03/2025", name: "Ruan Silva", territory: "30" },
+                { date: "23/03/2025", name: "Ruan Silva", territory: "31" }, { date: "23/03/2025", name: "Vitor", territory: "32" },
+                { date: "23/03/2025", name: "Vitor", territory: "34" }, { date: "28/03/2025", name: "Matheus Mikó", territory: "31" },
+                { date: "28/03/2025", name: "Matheus Mikó", territory: "32" }, { date: "28/03/2025", name: "Matheus Mikó", territory: "33" },
+                { date: "28/03/2025", name: "Hugo Alcântara", territory: "35" }, { date: "28/03/2025", name: "Francisco Godoy", territory: "36" },
+                { date: "30/03/2025", name: "Vitor", territory: "37" }, { date: "30/03/2025", name: "Getulio Rodrigues", territory: "38" },
+                { date: "30/03/2025", name: "Getulio Rodrigues", territory: "39" }, { date: "30/03/2025", name: "Francisco Godoy", territory: "40" },
+                { date: "30/03/2025", name: "Francisco Godoy", territory: "41" }, { date: "30/03/2025", name: "Wagner", territory: "42" },
+                { date: "30/03/2025", name: "Wagner", territory: "43" },
+                { date: "31/03/2025", name: "Irineu Armelin", territory: "1" },
+                { date: "04/04/2025", name: "William Lindem", territory: "33" },
+                { date: "04/04/2025", name: "Márcio Arruda", territory: "34" }, { date: "04/04/2025", name: "Wagner", territory: "35" },
+                { date: "04/04/2025", name: "Wagner", territory: "36" }, { date: "04/04/2025", name: "Wagner", territory: "42" },
+                { date: "04/04/2025", name: "Wagner", territory: "43" }, { date: "07/04/2025", name: "Getulio Rodrigues", territory: "14" },
+                { date: "07/04/2025", name: "Getulio Rodrigues", territory: "15" }, { date: "07/04/2025", name: "Getulio Rodrigues", territory: "16" },
+                { date: "07/04/2025", name: "Silvino Amorim", territory: "34" }, { date: "07/04/2025", name: "Getulio Rodrigues", territory: "44" },
+                { date: "07/04/2025", name: "Getulio Rodrigues", territory: "45" }, { date: "07/04/2025", name: "Getulio Rodrigues", territory: "46" },
+                { date: "11/04/2025", name: "Vitor", territory: "2" }, { date: "11/04/2025", name: "Irineu Armelin", territory: "3" },
+                { date: "11/04/2025", name: "Irineu Armelin", territory: "4" }, { date: "11/04/2025", name: "Irineu Armelin", territory: "5" },
+                { date: "11/04/2025", name: "Ivo Jason", territory: "6" }, { date: "11/04/2025", name: "Silvino Amorim", territory: "5" },
+                { date: "11/04/2025", name: "Irineu Armelin", territory: "7" }, { date: "11/04/2025", name: "Wagner", territory: "8" },
+                { date: "11/04/2025", name: "Ivo Jason", territory: "10" }, { date: "11/04/2025", name: "Silvino Amorim", territory: "11" },
+                { date: "11/04/2025", name: "Getulio Rodrigues", territory: "12" }, { date: "11/04/2025", name: "Getulio Rodrigues", territory: "13" },
+                { date: "11/04/2025", name: "Francisco Godoy", territory: "17" }, { date: "11/04/2025", name: "Francisco Godoy", territory: "18" },
+                { date: "19/04/2025", name: "Ivo Jason", territory: "6" }, { date: "19/04/2025", name: "Wagner", territory: "8" },
+                { date: "19/04/2025", name: "Ivo Jason", territory: "9" }, { date: "19/04/2025", name: "Rodrigo Cardoso", territory: "11" },
+                { date: "19/04/2025", name: "Rodrigo Cardoso", territory: "18" }, { date: "19/04/2025", name: "Getulio Rodrigues", territory: "19" },
+                { date: "19/04/2025", name: "Wagner", territory: "20" }, { date: "19/04/2025", name: "José Soares", territory: "21" },
+                { date: "19/04/2025", name: "Rodrigo Cardoso", territory: "22" }, { date: "21/04/2025", name: "Francisco Godoy", territory: "9" },
+                { date: "21/04/2025", name: "Francisco Godoy", territory: "10" }, { date: "21/04/2025", name: "Irineu Armelin", territory: "23" },
+                { date: "21/04/2025", name: "Irineu Armelin", territory: "24" }, { date: "21/04/2025", name: "Irineu Armelin", territory: "25" },
+                { date: "21/04/2025", name: "Getulio Rodrigues", territory: "26" }, { date: "21/04/2025", name: "Vinicius W", territory: "27" },
+                { date: "21/04/2025", name: "Ivo Jason", territory: "28" }, { date: "21/04/2025", name: "Vinicius W", territory: "34" },
+                { date: "26/04/2025", name: "Rodrigo Cardoso", territory: "22" }, { date: "26/04/2025", name: "Vinicius W", territory: "26" },
+                { date: "26/04/2025", name: "Vinicius W", territory: "27" }, { date: "26/04/2025", name: "Ivo Jason", territory: "28" },
+                { date: "26/04/2025", name: "Getulio Rodrigues", territory: "33" }, { date: "26/04/2025", name: "Getulio Rodrigues", territory: "34" },
+                { date: "26/04/2025", name: "Getulio Rodrigues", territory: "35" }, { date: "28/04/2025", name: "Silvino Amorim", territory: "22" },
+                { date: "28/04/2025", name: "Silvino Amorim", territory: "23" }, { date: "28/04/2025", name: "Vitor", territory: "29" },
+                { date: "28/04/2025", name: "Vitor", territory: "30" }, { date: "28/04/2025", name: "Irineu Armelin", territory: "31" },
+                { date: "28/04/2025", name: "Getulio Rodrigues", territory: "32" }, { date: "28/04/2025", name: "Getulio Rodrigues", territory: "34" },
+                { date: "28/04/2025", name: "Francisco Godoy", territory: "35" }, { date: "28/04/2025", name: "Francisco Godoy", territory: "36" },
+                { date: "02/05/2025", name: "Márcio Arruda", territory: "35" }, { date: "02/05/2025", name: "Leonardo Dutra", territory: "36" },
+                { date: "02/05/2025", name: "Francisco Godoy Novo", territory: "37" }, { date: "02/05/2025", name: "Aurelio Lins", territory: "38" },
+                { date: "02/05/2025", name: "Wagner", territory: "39" }, { date: "05/05/2025", name: "Silvino Amorim", territory: "22" },
+                { date: "05/05/2025", name: "Wagner", territory: "38" }, { date: "05/05/2025", name: "Getulio Rodrigues", territory: "40" },
+                { date: "05/05/2025", name: "Francisco Godoy", territory: "41" }, { date: "05/05/2025", name: "Francisco Godoy", territory: "42" },
+                { date: "05/05/2025", name: "Francisco Godoy", territory: "43" }, { date: "10/05/2025", name: "Vinicius W", territory: "4" },
+                { date: "10/05/2025", name: "Vinicius W", territory: "5" }, { date: "10/05/2025", name: "Ivo Jason", territory: "6" },
+                { date: "10/05/2025", name: "Ivo Jason", territory: "7" }, { date: "10/05/2025", name: "Julio Neto", territory: "8" },
+                { date: "10/05/2025", name: "Julio Neto", territory: "9" }, { date: "10/05/2025", name: "Getulio Rodrigues", territory: "10" },
+                { date: "10/05/2025", name: "Hugo Alcântara", territory: "14" }, { date: "10/05/2025", name: "Hugo Alcântara", territory: "15" },
+                { date: "10/05/2025", name: "Hugo Alcântara", territory: "16" }, { date: "10/05/2025", name: "Hugo Alcântara", territory: "44" },
+                { date: "10/05/2025", name: "Hugo Alcântara", territory: "45" }, { date: "10/05/2025", name: "Hugo Alcântara", territory: "46" },
+                { date: "12/05/2025", name: "Getulio Rodrigues", territory: "12" }, { date: "12/05/2025", name: "Francisco Godoy", territory: "17" },
+                { date: "12/05/2025", name: "Francisco Godoy", territory: "18" }, { date: "12/05/2025", name: "Ivo Jason", territory: "19" },
+                { date: "12/05/2025", name: "Ivo Jason", territory: "20" }, { date: "12/05/2025", name: "José Soares", territory: "21" },
+                { date: "17/05/2025", name: "Márcio Arruda", territory: "18" }, { date: "17/05/2025", name: "Márcio Arruda", territory: "19" },
+                { date: "17/05/2025", name: "Getulio Rodrigues", territory: "25" }, { date: "17/05/2025", name: "Getulio Rodrigues", territory: "26" },
+                { date: "19/05/2025", name: "Silvino Amorim", territory: "22" }, { date: "19/05/2025", name: "Francisco Godoy", territory: "26" },
+                { date: "19/05/2025", name: "Aurelio Lins", territory: "27" }, { date: "19/05/2025", name: "Ivo Jason", territory: "28" },
+                { date: "19/05/2025", name: "Ivo Jason", territory: "30" }, { date: "19/05/2025", name: "Ivo Jason", territory: "31" },
+                { date: "24/05/2025", name: "Emerson", territory: "23" }, { date: "24/05/2025", name: "Getulio Rodrigues", territory: "30" },
+                { date: "24/05/2025", name: "Getulio Rodrigues", territory: "31" }, { date: "24/05/2025", name: "Getulio Rodrigues", territory: "33" },
+                { date: "24/05/2025", name: "Getulio Rodrigues", territory: "34" }, { date: "26/05/2025", name: "Silvino Amorim", territory: "23" },
+                { date: "26/05/2025", name: "Silvino Amorim", territory: "28" }, { date: "26/05/2025", name: "Silvino Amorim", territory: "30" },
+                { date: "26/05/2025", name: "Getulio Rodrigues", territory: "34" }, { date: "26/05/2025", name: "Getulio Rodrigues", territory: "35" },
+                { date: "26/05/2025", name: "Francisco Godoy", territory: "36" }, { date: "26/05/2025", name: "Ivo Jason", territory: "37" },
+                { date: "31/05/2025", name: "Ruan Silva", territory: "30" }, { date: "31/05/2025", name: "Ivo Jason", territory: "37" },
+                { date: "31/05/2025", name: "Getulio Rodrigues", territory: "38" }, { date: "02/06/2025", name: "Silvino Amorim", territory: "28" },
+                { date: "02/06/2025", name: "Francisco Godoy", territory: "37" }, { date: "02/06/2025", name: "Francisco Godoy", territory: "38" },
+                { date: "02/06/2025", name: "Francisco Godoy", territory: "39" }, { date: "02/06/2025", name: "Getulio Rodrigues", territory: "42" },
+                { date: "02/06/2025", name: "Getulio Rodrigues", territory: "43" }, { date: "07/06/2025", name: "Brenno", territory: "2" },
+                { date: "07/06/2025", name: "Silvino Amorim", territory: "3" }, { date: "07/06/2025", name: "Silvino Amorim", territory: "5" },
+                { date: "07/06/2025", name: "Vitor", territory: "6" }, { date: "07/06/2025", name: "Vitor", territory: "7" },
+                { date: "07/06/2025", name: "Wagner", territory: "8" }, { date: "07/06/2025", name: "Wagner", territory: "11" },
+                { date: "09/06/2025", name: "Silvino Amorim", territory: "2" }, { date: "09/06/2025", name: "Ivo Jason", territory: "4" },
+                { date: "09/06/2025", name: "Ivo Jason", territory: "9" }, { date: "09/06/2025", name: "Ivo Jason", territory: "10" },
+                { date: "09/06/2025", name: "Getulio Rodrigues", territory: "12" }, { date: "09/06/2025", name: "Getulio Rodrigues", territory: "13" },
+                { date: "09/06/2025", name: "Francisco Godoy", territory: "17" }, { date: "09/06/2025", name: "Rodrigo Cardoso", territory: "18" },
+                { date: "14/06/2025", name: "Getulio Rodrigues", territory: "19" }, { date: "14/06/2025", name: "Getulio Rodrigues", territory: "20" },
+                { date: "14/06/2025", name: "Getulio Rodrigues", territory: "21" }, { date: "14/06/2025", name: "Getulio Rodrigues", territory: "23" },
+                { date: "14/06/2025", name: "Getulio Rodrigues", territory: "24" }, { date: "16/06/2025", name: "Getulio Rodrigues", territory: "25" },
+                { date: "16/06/2025", name: "Getulio Rodrigues", territory: "26" }, { date: "16/06/2025", name: "Vitor", territory: "27" },
+                { date: "16/06/2025", name: "Vitor", territory: "28" }, { date: "16/06/2025", name: "Francisco Godoy", territory: "33" },
+                { date: "16/06/2025", name: "Vitor", territory: "34" }, { date: "16/06/2025", name: "Getulio Rodrigues", territory: "35" },
+                { date: "17/06/2025", name: "Rodrigo Cardoso", territory: "22" },
+                { date: "21/06/2025", name: "Getulio Rodrigues", territory: "35" }, { date: "21/06/2025", name: "Getulio Rodrigues", territory: "37" },
+                { date: "21/06/2025", name: "Getulio Rodrigues", territory: "38" }, { date: "21/06/2025", name: "Getulio Rodrigues", territory: "39" },
+                { date: "21/06/2025", name: "Getulio Rodrigues", territory: "40" }, { date: "23/06/2025", name: "Silvino Amorim", territory: "3" },
+                { date: "23/06/2025", name: "Ivo Jason", territory: "15" }, { date: "23/06/2025", name: "Vitor", territory: "41" },
+                { date: "23/06/2025", name: "Vitor", territory: "34" }, { date: "01/07/2025", name: "Silvino Amorim", territory: "2" },
+                { date: "02/07/2025", name: "Getulio Rodrigues", territory: "5" }, { date: "03/07/2025", name: "Getulio Rodrigues", territory: "4" },
+                { date: "04/07/2025", name: "Ivo Jason", territory: "6" }, { date: "04/07/2025", name: "Francisco Godoy", territory: "8" },
+                { date: "05/07/2025", name: "José Soares", territory: "10" }, { date: "05/07/2025", name: "José Soares", territory: "11" },
+                { date: "05/07/2025", name: "Vando Gregorio", territory: "14" }, { date: "06/07/2025", name: "Getulio Rodrigues", territory: "15" },
+                { date: "07/07/2025", name: "Silvino Amorim", territory: "3" }, { date: "07/07/2025", name: "Silvino Amorim", territory: "9" },
+                { date: "08/07/2025", name: "Wagner", territory: "12" }, { date: "08/07/2025", name: "Wagner", territory: "13" },
+                { date: "10/07/2025", name: "Getulio Rodrigues", territory: "7" }, { date: "10/07/2025", name: "Ivo Jason", territory: "17" },
+                { date: "11/07/2025", name: "Getulio Rodrigues", territory: "20" }, { date: "12/07/2025", name: "Getulio Rodrigues", territory: "21" },
+                { date: "13/07/2025", name: "Vando Gregorio", territory: "16" }, { date: "13/07/2025", name: "Vando Gregorio", territory: "45" },
+                { date: "13/07/2025", name: "Vando Gregorio", territory: "46" }, { date: "14/07/2025", name: "Silvino Amorim", territory: "23" },
+                { date: "15/07/2025", name: "Vitor", territory: "18" }
+            ];
+            
+            // --- CONSTANTES E VARIÁVEIS GLOBAIS ---
+            const NUM_TERRITORIOS = 46;
+            const NUM_DESIGNACOES_PER_PAGE = 4;
+            const STORAGE_KEY_DATA = 'territoryDataS13';
+            const STORAGE_KEY_NAMES = 'publicadoresS13';
+            
+            let territoryData = {};
+            let publicadores = [];
+            let currentPage = 0;
+            let totalPages = 1;
+
+            // --- SELEÇÃO DOS ELEMENTOS DO DOM ---
+            const form = document.getElementById('registro-form');
+            const territorioNumeroInput = document.getElementById('territorio-numero');
+            const nomeSelect = document.getElementById('nome-select');
+            const dataInicioInput = document.getElementById('data-inicio');
+            const dataConclusaoInput = document.getElementById('data-conclusao');
+            const planilhaCorpo = document.getElementById('planilha-corpo');
+            const baixarBtn = document.getElementById('baixar-excel');
+            const prevPageBtn = document.getElementById('prev-page-btn');
+            const nextPageBtn = document.getElementById('next-page-btn');
+            const pageIndicator = document.getElementById('page-indicator');
+            const resetDataBtn = document.getElementById('reset-data-btn');
+            
+            // Elementos do Modal de Adicionar Registro
+            const openAddRecordModalBtn = document.getElementById('open-add-record-modal-btn');
+            const addRecordModal = document.getElementById('add-record-modal');
+            const closeAddRecordModalBtn = document.getElementById('close-add-record-modal-btn');
+
+            // Elementos do Modal de Nomes
+            const openNamesModalBtn = document.getElementById('open-names-modal-btn');
+            const namesModal = document.getElementById('names-modal');
+            const closeNamesModalBtn = document.getElementById('close-names-modal-btn');
+            const addNameForm = document.getElementById('add-name-form');
+            const novoNomeInput = document.getElementById('novo-nome-input');
+            const listaPublicadores = document.getElementById('lista-publicadores');
+
+            // --- FUNÇÕES DE DADOS ---
+
+            /**
+             * Salva os dados de territórios e publicadores no Local Storage.
+             */
+            function saveDataToLocalStorage() {
+                localStorage.setItem(STORAGE_KEY_DATA, JSON.stringify(territoryData));
+                localStorage.setItem(STORAGE_KEY_NAMES, JSON.stringify(publicadores));
+            }
+
+            /**
+             * Carrega os dados do Local Storage ou inicializa com os dados padrão.
+             */
+            function loadData() {
+                const savedData = localStorage.getItem(STORAGE_KEY_DATA);
+                const savedNames = localStorage.getItem(STORAGE_KEY_NAMES);
+
+                if (savedData && savedNames) {
+                    territoryData = JSON.parse(savedData);
+                    publicadores = JSON.parse(savedNames);
+                } else {
+                    initializeDefaultData();
+                }
+            }
+            
+            /**
+             * Inicializa a aplicação com os dados padrão do PDF.
+             */
+            function initializeDefaultData() {
+                // Reseta a estrutura de dados dos territórios
+                for (let i = 1; i <= NUM_TERRITORIOS; i++) {
+                    territoryData[i] = [];
+                }
+                
+                // Mapa para correções de nomes
+                const nameCorrections = { "Ivo Janson": "Ivo Jason", "Vinícius Weirich": "Vinicius W", "Marcio Arruda": "Márcio Arruda" };
+                
+                // Processa os registros iniciais
+                dadosIniciaisDoPDF.forEach(registro => {
+                    const { territory, name, date } = registro;
+                    const correctedName = nameCorrections[name] || name;
+                    const [dia, mes, ano] = date.split('/');
+                    
+                    // Converte a data para um formato que o new Date entende (YYYY-MM-DD)
+                    const dateString = `${ano}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
+                    const dataInicio = new Date(`${dateString}T00:00:00`);
+                    const dataConclusao = new Date(dataInicio);
+                    dataConclusao.setDate(dataConclusao.getDate() + 1); // Simula conclusão no dia seguinte
+
+                    territoryData[territory].push({
+                        name: correctedName,
+                        startDate: dataInicio.toISOString(), // Salva como string ISO para consistência
+                        endDate: dataConclusao.toISOString(),
+                    });
+                });
+
+                // Extrai e define a lista de publicadores inicial
+                const nomesUnicosDoPDF = [...new Set(dadosIniciaisDoPDF.map(item => {
+                    return nameCorrections[item.name] || item.name;
+                }))];
+                publicadores = nomesUnicosDoPDF.sort();
+                
+                // Salva os dados iniciais no storage
+                saveDataToLocalStorage();
+            }
+
+            // --- FUNÇÕES DE RENDERIZAÇÃO E UI ---
+
+            /**
+             * Renderiza os nomes cadastrados na lista do modal e no dropdown do formulário.
+             */
+            function renderizarNomes() {
+                publicadores.sort((a, b) => a.localeCompare(b));
+                
+                nomeSelect.innerHTML = '<option value="">Selecione um nome</option>';
+                listaPublicadores.innerHTML = '';
+
+                publicadores.forEach((nome) => {
+                    // Adiciona ao dropdown do formulário
+                    const option = document.createElement('option');
+                    option.value = nome;
+                    option.textContent = nome;
+                    nomeSelect.appendChild(option);
+
+                    // Adiciona à lista no modal de gerenciamento
+                    const li = document.createElement('li');
+                    li.textContent = nome;
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.textContent = 'X';
+                    deleteBtn.className = 'delete-btn';
+                    deleteBtn.title = 'Remover nome';
+                    deleteBtn.dataset.name = nome;
+                    li.appendChild(deleteBtn);
+                    listaPublicadores.appendChild(li);
+                });
+            }
+            
+            /**
+             * Gera a estrutura de linhas vazias da tabela.
+             */
+            function criarEstruturaTabela() {
+                let html = '';
+                for (let i = 1; i <= NUM_TERRITORIOS; i++) {
+                    const rowClass = i % 2 === 0 ? 'row-even' : 'row-odd';
+                    html += `<tr id="row-${i}-names" class="${rowClass}">`;
+                    html += `<td rowspan="2">${i}</td>`;
+                    html += `<td rowspan="2" id="t${i}-last-date"></td>`;
+                    for (let j = 1; j <= NUM_DESIGNACOES_PER_PAGE; j++) {
+                        html += `<td colspan="2" id="t${i}-name-${j}" class="name-cell"></td>`;
+                    }
+                    html += `</tr>`;
+                    html += `<tr id="row-${i}-dates" class="${rowClass}">`;
+                    for (let j = 1; j <= NUM_DESIGNACOES_PER_PAGE; j++) {
+                        html += `<td id="t${i}-start-${j}"></td>`;
+                        html += `<td id="t${i}-end-${j}"></td>`;
+                    }
+                    html += `</tr>`;
+                }
+                planilhaCorpo.innerHTML = html;
+            }
+
+            /**
+             * Formata uma string de data ISO para 'DD/MM/YY'.
+             */
+            function formatarDataParaTabela(dateString) {
+                if (!dateString) return '';
+                const dataObj = new Date(dateString);
+                const dia = String(dataObj.getUTCDate()).padStart(2, '0');
+                const mes = String(dataObj.getUTCMonth() + 1).padStart(2, '0');
+                const ano = String(dataObj.getUTCFullYear()).slice(-2);
+                return `${dia}/${mes}/${ano}`;
+            }
+
+            /**
+             * Atualiza os controles e informações de paginação.
+             */
+            function updatePaginationInfo() {
+                const maxAssignments = Math.max(0, ...Object.values(territoryData).map(arr => arr.length));
+                totalPages = Math.ceil(maxAssignments / NUM_DESIGNACOES_PER_PAGE) || 1;
+                
+                if (currentPage >= totalPages) {
+                    currentPage = totalPages - 1;
+                }
+                if (currentPage < 0) {
+                    currentPage = 0;
+                }
+
+                pageIndicator.textContent = `Página ${currentPage + 1} de ${totalPages}`;
+                prevPageBtn.disabled = currentPage === 0;
+                nextPageBtn.disabled = currentPage >= totalPages - 1;
+            }
+
+            /**
+             * Renderiza os dados da página atual na tabela.
+             */
+            function renderCurrentPageData() {
+                const startIndex = currentPage * NUM_DESIGNACOES_PER_PAGE;
+
+                for (let i = 1; i <= NUM_TERRITORIOS; i++) {
+                    const assignments = territoryData[i] || [];
+                    
+                    // Ordena as designações por data de início para garantir consistência
+                    assignments.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+
+                    const lastAssignment = assignments[assignments.length - 1];
+                    document.getElementById(`t${i}-last-date`).innerHTML = lastAssignment ? formatarDataParaTabela(lastAssignment.endDate) : '';
+
+                    for (let j = 0; j < NUM_DESIGNACOES_PER_PAGE; j++) {
+                        const assignment = assignments[startIndex + j];
+                        const nameCell = document.getElementById(`t${i}-name-${j + 1}`);
+                        const startCell = document.getElementById(`t${i}-start-${j + 1}`);
+                        const endCell = document.getElementById(`t${i}-end-${j + 1}`);
+
+                        if (assignment) {
+                            nameCell.innerHTML = assignment.name;
+                            startCell.innerHTML = formatarDataParaTabela(assignment.startDate);
+                            endCell.innerHTML = formatarDataParaTabela(assignment.endDate);
+                        } else {
+                            nameCell.innerHTML = '';
+                            startCell.innerHTML = '';
+                            endCell.innerHTML = '';
+                        }
+                    }
+                }
+            }
+            
+            /**
+             * Função para redesenhar toda a UI com os dados atuais.
+             */
+            function refreshUI() {
+                renderizarNomes();
+                updatePaginationInfo();
+                renderCurrentPageData();
+            }
+
+            // --- MANIPULADORES DE EVENTOS ---
+
+            /**
+             * Adiciona um novo nome à lista de publicadores.
+             */
+            function adicionarNome(event) {
+                event.preventDefault();
+                const novoNome = novoNomeInput.value.trim();
+                if (novoNome && !publicadores.includes(novoNome)) {
+                    publicadores.push(novoNome);
+                    saveDataToLocalStorage();
+                    renderizarNomes();
+                    novoNomeInput.value = '';
+                } else if (publicadores.includes(novoNome)) {
+                    alert('Este nome já está cadastrado.');
+                }
+            }
+
+            /**
+             * Remove um nome da lista de publicadores.
+             */
+            function deletarNome(event) {
+                if (event.target.classList.contains('delete-btn')) {
+                    const nomeParaRemover = event.target.dataset.name;
+                    if (confirm(`Tem certeza que deseja remover "${nomeParaRemover}" da lista?`)) {
+                        publicadores = publicadores.filter(p => p !== nomeParaRemover);
+                        saveDataToLocalStorage();
+                        renderizarNomes();
+                    }
+                }
+            }
+            
+            /**
+             * Adiciona um registro do formulário, atualiza os dados e a visualização.
+             */
+            function adicionarRegistroPeloFormulario(event) {
+                event.preventDefault();
+                const territorioNumero = territorioNumeroInput.value;
+                const nome = nomeSelect.value;
+                const dataInicioStr = dataInicioInput.value;
+                const dataConclusaoStr = dataConclusaoInput.value;
+
+                if (!territorioNumero || !nome || !dataInicioStr || !dataConclusaoStr) {
+                    alert('Por favor, preencha todos os campos do formulário.');
+                    return;
+                }
+                
+                const dataInicio = new Date(`${dataInicioStr}T00:00:00`);
+                const dataConclusao = new Date(`${dataConclusaoStr}T00:00:00`);
+
+                if (dataConclusao < dataInicio) {
+                    alert('A data de conclusão não pode ser anterior à data de designação.');
+                    return;
+                }
+                
+                territoryData[territorioNumero].push({
+                    name: nome,
+                    startDate: dataInicio.toISOString(),
+                    endDate: dataConclusao.toISOString(),
+                });
+                
+                // Salva os dados atualizados
+                saveDataToLocalStorage();
+                
+                // Vai para a página onde o novo item foi adicionado
+                currentPage = Math.floor((territoryData[territorioNumero].length - 1) / NUM_DESIGNACOES_PER_PAGE);
+
+                refreshUI();
+                form.reset();
+                addRecordModal.classList.add('hidden'); // Fecha o modal após adicionar
+            }
+
+            /**
+             * Exporta os dados da tabela para um arquivo .xlsx.
+             */
+            function exportarParaExcel() {
+                // Para exportar todos os dados, teríamos que construir uma tabela virtual completa.
+                // Por simplicidade, esta função exporta a visualização atual.
+                alert("A exportação para Excel irá baixar apenas a página de registros visível no momento.");
+                const tabela = document.getElementById('planilha');
+                const workbook = XLSX.utils.table_to_book(tabela, { sheet: "Registros S-13", raw: true });
+                XLSX.writeFile(workbook, `REGISTRO_S13_Pagina_${currentPage + 1}.xlsx`);
+            }
+
+            /**
+             * Reseta todos os dados para o estado inicial do PDF.
+             */
+            function resetarDados() {
+                if (confirm("Você tem certeza que deseja apagar TODOS os dados e voltar para a planilha original? Esta ação não pode ser desfeita.")) {
+                    localStorage.removeItem(STORAGE_KEY_DATA);
+                    localStorage.removeItem(STORAGE_KEY_NAMES);
+                    // Recarrega a página para aplicar os dados padrão
+                    window.location.reload();
+                }
+            }
+
+            // --- EVENT LISTENERS ---
+            form.addEventListener('submit', adicionarRegistroPeloFormulario);
+            addNameForm.addEventListener('submit', adicionarNome);
+            listaPublicadores.addEventListener('click', deletarNome);
+            baixarBtn.addEventListener('click', exportarParaExcel);
+            resetDataBtn.addEventListener('click', resetarDados);
+
+            prevPageBtn.addEventListener('click', () => {
+                if (currentPage > 0) {
+                    currentPage--;
+                    refreshUI();
+                }
+            });
+
+            nextPageBtn.addEventListener('click', () => {
+                if (currentPage < totalPages - 1) {
+                    currentPage++;
+                    refreshUI();
+                }
+            });
+
+            // Listeners dos Modais
+            openAddRecordModalBtn.addEventListener('click', () => addRecordModal.classList.remove('hidden'));
+            closeAddRecordModalBtn.addEventListener('click', () => addRecordModal.classList.add('hidden'));
+            addRecordModal.addEventListener('click', (event) => {
+                if (event.target === addRecordModal) {
+                    addRecordModal.classList.add('hidden');
+                }
+            });
+
+            openNamesModalBtn.addEventListener('click', () => namesModal.classList.remove('hidden'));
+            closeNamesModalBtn.addEventListener('click', () => namesModal.classList.add('hidden'));
+            namesModal.addEventListener('click', (event) => {
+                if (event.target === namesModal) {
+                    namesModal.classList.add('hidden');
+                }
+            });
+
+            // --- INICIALIZAÇÃO ---
+            function init() {
+                loadData();
+                criarEstruturaTabela();
+                refreshUI();
+            }
+
+            init();
+        });
+    </script>
+
+</body>
+</html>
